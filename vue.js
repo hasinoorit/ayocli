@@ -12,10 +12,6 @@ const isExist = async ($path) => {
   }
 };
 
-/**
- *
- * @param {string} name
- */
 const createComponent = async (name) => {
   const vueContent = `<script lang="ts" setup>
 const props = defineProps({});
@@ -45,7 +41,6 @@ describe("${name}.vue", () => {
   const srcPath = join(process.cwd(), "src/components");
   const componentPath = join(srcPath, name);
   const srcExist = await isExist(srcPath);
-  console.log(srcPath);
   if (!srcExist) {
     throw new Error("src directory not found in project directory");
   }
@@ -109,6 +104,7 @@ export const vueCli = async () => {
     switch (type.value) {
       case "component":
         await createComponent(name.value);
+        await reBuildIndexFile();
         console.log(
           chalk.bold(`Vue ${type.value} ${chalk.green(name.value)} created`)
         );
@@ -119,4 +115,48 @@ export const vueCli = async () => {
   } catch (error) {
     console.error(error);
   }
+};
+
+const generateList = async (directory, checker) => {
+  const list = await fs.readdir(join(process.cwd(), "src", directory), {
+    withFileTypes: true,
+  });
+  const directories = await Promise.all(
+    list.map(async (dirent) => {
+      if (dirent.isDirectory()) {
+        const result = await checker(dirent);
+        if (result) {
+          const finalPath = join(directory, dirent.name, result.fileName);
+          return { name: dirent.name, path: finalPath, named: !!result.named };
+        }
+      }
+      return false;
+    })
+  );
+  return directories;
+};
+
+const vueChecker = async (dirent) => {
+  const componentName = dirent.name + ".vue";
+  const path = join("src/components", dirent.name, componentName);
+  const indexPath = join("src/components", dirent.name, "index.ts");
+  const existVue = await isExist(path);
+  const existIndex = await isExist(indexPath);
+  if (existIndex && existVue) {
+    return { fileName: "index", named: false };
+  }
+  return false;
+};
+
+const reBuildIndexFile = async () => {
+  const list = await generateList("components", vueChecker);
+  const defaultImports = list.filter((item) => item && !item.named);
+  const generateImports = defaultImports
+    .map((item) => `import ${item.name} from "./${item.path}";\n`)
+    .join("");
+  const generateExports = `export { ${defaultImports
+    .map((item) => item.name)
+    .join(", ")} };\n`;
+  const contents = generateImports + generateExports;
+  await fs.writeFile("src/index.ts", contents);
 };
