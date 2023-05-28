@@ -1,7 +1,12 @@
 import prompts from "prompts";
 import chalk from "chalk";
 import fs from "node:fs/promises";
-import { join } from "path";
+import _path from "path";
+
+const join = (...arg) => {
+  const $path = _path.join(...arg);
+  return $path.replace("\\", "/");
+};
 
 const isExist = async ($path) => {
   try {
@@ -54,6 +59,25 @@ describe("${name}.vue", () => {
   await fs.writeFile(vuePath, vueContent);
   await fs.writeFile(indexPath, indexContent);
   await fs.writeFile(testPath, testContent);
+};
+
+const createComposable = async (name) => {
+  const srcPath = join(process.cwd(), "src/composables");
+  const composablePath = join(srcPath, name);
+  const indexPath = join(composablePath, "index.ts");
+  const testPath = join(composablePath, "index.test.ts");
+  const srcExist = await isExist(srcPath);
+  if (!srcExist) {
+    throw new Error("src directory not found in project directory");
+  }
+  if (await isExist(composablePath)) {
+    throw new Error("Composable alreardy exist");
+  }
+  await fs.mkdir(composablePath);
+  const composableContent = `export const ${name} = () => {}`;
+  const composableTestContent = `describe("${name}", () => {})`;
+  await fs.writeFile(indexPath, composableContent);
+  await fs.writeFile(testPath, composableTestContent);
 };
 
 const askType = async () => {
@@ -109,6 +133,13 @@ export const vueCli = async () => {
           chalk.bold(`Vue ${type.value} ${chalk.green(name.value)} created`)
         );
         break;
+      case "composable":
+        await createComposable(name.value);
+        await reBuildIndexFile();
+        console.log(
+          chalk.bold(`Vue ${type.value} ${chalk.green(name.value)} created`)
+        );
+        break;
       default:
         break;
     }
@@ -148,15 +179,29 @@ const vueChecker = async (dirent) => {
   return false;
 };
 
+const composableChecker = async (dirent) => {
+  const indexPath = join("src/composables", dirent.name, "index.ts");
+  const existIndex = await isExist(indexPath);
+  if (existIndex) {
+    return { fileName: "index", named: true };
+  }
+  return false;
+};
+
 const reBuildIndexFile = async () => {
   const list = await generateList("components", vueChecker);
+  const composableList = await generateList("composables", composableChecker);
   const defaultImports = list.filter((item) => item && !item.named);
-  const generateImports = defaultImports
+  const generateDefaultImports = defaultImports
     .map((item) => `import ${item.name} from "./${item.path}";\n`)
+    .join("");
+  const generateNamedExports = composableList
+    .map((item) => `export { ${item.name} } from "./${item.path}";\n`)
     .join("");
   const generateExports = `export { ${defaultImports
     .map((item) => item.name)
     .join(", ")} };\n`;
-  const contents = generateImports + generateExports;
+  const contents =
+    generateDefaultImports + generateNamedExports + generateExports;
   await fs.writeFile("src/index.ts", contents);
 };
