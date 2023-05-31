@@ -4,8 +4,7 @@ import fs from "node:fs/promises";
 import _path from "path";
 
 const join = (...arg) => {
-  const $path = _path.join(...arg);
-  return $path.replace("\\", "/");
+  return _path.join(...arg).replace(/\\/g, "/");
 };
 
 const isExist = async ($path) => {
@@ -14,6 +13,17 @@ const isExist = async ($path) => {
     return true;
   } catch {
     return false;
+  }
+};
+
+/**
+ *
+ * @param {string} path
+ */
+const ensureDir = async (path) => {
+  const exist = await isExist(path);
+  if (!exist) {
+    await fs.mkdir(path, { recursive: true });
   }
 };
 
@@ -43,6 +53,8 @@ describe("${name}.vue", () => {
   });
 });
 `;
+  const cssFileName = `${name.replace("A", "").toLowerCase()}.css`;
+  const defaultThemeContent = `@import url("../base/${cssFileName}");\n`;
   const srcPath = join(process.cwd(), "src/components");
   const componentPath = join(srcPath, name);
   const srcExist = await isExist(srcPath);
@@ -52,13 +64,31 @@ describe("${name}.vue", () => {
   if (await isExist(componentPath)) {
     throw new Error("Component Directory is not empty");
   }
+
   await fs.mkdir(componentPath);
   const vuePath = join(componentPath, `${name}.vue`);
   const indexPath = join(componentPath, `index.ts`);
+  const baseCssPath = join("src/assets/themes/base", cssFileName);
+  const defaultThemeCssPath = join("src/assets/themes/default", cssFileName);
   const testPath = join(componentPath, `${name}.test.ts`);
   await fs.writeFile(vuePath, vueContent);
   await fs.writeFile(indexPath, indexContent);
   await fs.writeFile(testPath, testContent);
+  await fs.writeFile(baseCssPath, "");
+  await fs.writeFile(defaultThemeCssPath, defaultThemeContent);
+  const allThemeCSSFileName = "src/assets/themes/default/all.css";
+  const isAllCssExistInTheme = await isExist(allThemeCSSFileName);
+  if (!isAllCssExistInTheme) {
+    await fs.writeFile(
+      allThemeCSSFileName,
+      `@import url("./${cssFileName}");\n`
+    );
+  } else {
+    await fs.appendFile(
+      allThemeCSSFileName,
+      `@import url("./${cssFileName}");\n`
+    );
+  }
 };
 
 const createComposable = async (name) => {
@@ -116,6 +146,10 @@ const askName = (type) => {
 // validate: value => value < 18 ? `Nightclub is 18+ only` : true
 
 export const vueCli = async () => {
+  await ensureDir("./src/assets/themes/base");
+  await ensureDir("./src/assets/themes/default");
+  await ensureDir("./src/components");
+  await ensureDir("./src/composables");
   const type = await askType();
   if (!type.value) {
     return;
