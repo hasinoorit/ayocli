@@ -1,13 +1,20 @@
+import type { Dirent } from "fs";
 import prompts from "prompts";
 import chalk from "chalk";
-import fs from "node:fs/promises";
-import _path from "path";
+import { promises as fs } from "fs";
+import path from "path";
+import {
+  vueContent,
+  indexContent,
+  testContent,
+  metaContent,
+} from "./vueString";
 
-const join = (...arg) => {
-  return _path.join(...arg).replace(/\\/g, "/");
+const join = (...arg: string[]): string => {
+  return path.join(...arg).replace(/\\/g, "/");
 };
 
-const isExist = async ($path) => {
+const isExist = async ($path: string): Promise<boolean> => {
   try {
     await fs.stat($path);
     return true;
@@ -20,39 +27,19 @@ const isExist = async ($path) => {
  *
  * @param {string} path
  */
-const ensureDir = async (path) => {
+const ensureDir = async (path: string): Promise<void> => {
   const exist = await isExist(path);
   if (!exist) {
     await fs.mkdir(path, { recursive: true });
   }
 };
 
-const createComponent = async (name) => {
-  const vueContent = `<script lang="ts" setup>
-const props = defineProps({});
-const emit = defineEmits([]);
-</script>
-<template></template>
-`;
-  const indexContent = `import ${name} from "./${name}.vue";
+const createComponent = async (name: string): Promise<void> => {
+  //   const indexContent = `import ${name} from "./${name}.vue";
 
-export default ${name};
-  `;
-  const testContent = `import { mount } from "@vue/test-utils";
-import ${name} from "./${name}.vue";
+  // export default ${name};
+  //   `;
 
-describe("${name}.vue", () => {
-  it("Should render", () => {
-    const wrapper = mount(${name}, {});
-    expect(wrapper.text()).toContain("");
-  });
-  it("Should be interactive", async () => {
-    const wrapper = mount(${name}, {});
-    await wrapper.setProps({});
-    expect(wrapper.text()).toContain("");
-  });
-});
-`;
   const cssFileName = `${name.replace("A", "").toLowerCase()}.css`;
   const defaultThemeContent = `@import url("../base/${cssFileName}");\n`;
   const srcPath = join(process.cwd(), "src/components");
@@ -71,9 +58,11 @@ describe("${name}.vue", () => {
   const baseCssPath = join("src/assets/themes/base", cssFileName);
   const defaultThemeCssPath = join("src/assets/themes/default", cssFileName);
   const testPath = join(componentPath, `${name}.test.ts`);
+  const metaPath = join(componentPath, `${name}.meta.ts`);
   await fs.writeFile(vuePath, vueContent);
-  await fs.writeFile(indexPath, indexContent);
-  await fs.writeFile(testPath, testContent);
+  await fs.writeFile(indexPath, indexContent(name));
+  await fs.writeFile(testPath, testContent(name));
+  await fs.writeFile(metaPath, metaContent(name));
   await fs.writeFile(baseCssPath, "");
   await fs.writeFile(defaultThemeCssPath, defaultThemeContent);
   const allThemeCSSFileName = "src/assets/themes/default/all.css";
@@ -91,7 +80,7 @@ describe("${name}.vue", () => {
   }
 };
 
-const createComposable = async (name) => {
+const createComposable = async (name: string): Promise<void> => {
   const srcPath = join(process.cwd(), "src/composables");
   const composablePath = join(srcPath, name);
   const indexPath = join(composablePath, "index.ts");
@@ -110,7 +99,7 @@ const createComposable = async (name) => {
   await fs.writeFile(testPath, composableTestContent);
 };
 
-const askType = async () => {
+const askType = async (): Promise<{ value: string }> => {
   return prompts({
     type: "select",
     name: "value",
@@ -126,13 +115,13 @@ const askType = async () => {
   });
 };
 
-const askName = (type) => {
-  const validateComponentName = (value) =>
+const askName = async (type: string): Promise<{ value: string }> => {
+  const validateComponentName = (value: string): boolean | string =>
     /^[A-Z]{2}[a-zA-Z]+$/.test(value)
       ? true
       : chalk.red("Invalid component Name");
 
-  const validateComposableName = (value) =>
+  const validateComposableName = (value: string): boolean | string =>
     /^use[A-Z][a-zA-Z]+$/.test(value) ? true : "Invalid composable name";
   const validate =
     type === "component" ? validateComponentName : validateComposableName;
@@ -143,13 +132,14 @@ const askName = (type) => {
     validate,
   });
 };
-// validate: value => value < 18 ? `Nightclub is 18+ only` : true
 
-export const vueCli = async () => {
-  await ensureDir("./src/assets/themes/base");
-  await ensureDir("./src/assets/themes/default");
-  await ensureDir("./src/components");
-  await ensureDir("./src/composables");
+export const vueCli = async (): Promise<void> => {
+  Promise.allSettled([
+    ensureDir("./src/assets/themes/base"),
+    ensureDir("./src/assets/themes/default"),
+    ensureDir("./src/components"),
+    ensureDir("./src/composables"),
+  ]);
   const type = await askType();
   if (!type.value) {
     return;
@@ -182,7 +172,18 @@ export const vueCli = async () => {
   }
 };
 
-const generateList = async (directory, checker) => {
+interface Directory {
+  name: string;
+  path: string;
+  named: boolean;
+}
+
+const generateList = async (
+  directory: string,
+  checker: (
+    dirent: Dirent
+  ) => Promise<false | { fileName: string; named: boolean }>
+): Promise<Directory[]> => {
   const list = await fs.readdir(join(process.cwd(), "src", directory), {
     withFileTypes: true,
   });
@@ -198,10 +199,12 @@ const generateList = async (directory, checker) => {
       return false;
     })
   );
-  return directories;
+  return directories as Directory[];
 };
 
-const vueChecker = async (dirent) => {
+const vueChecker = async (
+  dirent: Dirent
+): Promise<false | { fileName: string; named: boolean }> => {
   const componentName = dirent.name + ".vue";
   const path = join("src/components", dirent.name, componentName);
   const indexPath = join("src/components", dirent.name, "index.ts");
@@ -213,7 +216,9 @@ const vueChecker = async (dirent) => {
   return false;
 };
 
-const composableChecker = async (dirent) => {
+const composableChecker = async (
+  dirent: Dirent
+): Promise<false | { fileName: string; named: boolean }> => {
   const indexPath = join("src/composables", dirent.name, "index.ts");
   const existIndex = await isExist(indexPath);
   if (existIndex) {
@@ -222,7 +227,7 @@ const composableChecker = async (dirent) => {
   return false;
 };
 
-const reBuildIndexFile = async () => {
+const reBuildIndexFile = async (): Promise<void> => {
   const list = await generateList("components", vueChecker);
   const composableList = await generateList("composables", composableChecker);
   const defaultImports = list.filter((item) => item && !item.named);

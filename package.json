@@ -1,14 +1,14 @@
 {
-  "name": "ayocli",
+  "name": "@hasinoor/ayocli",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CLI tools for bootstarpping developemnt of ayoton's products.",
+  "main": "dist/index.mjs",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx unbuild"
   },
   "bin": {
-    "ayo": "./ayo.js"
+    "ayo": "dist/index.mjs"
   },
   "author": "Hasinoor Rahman",
   "license": "MIT",
@@ -17,6 +17,10 @@
     "prompts": "^2.4.2"
   },
   "devDependencies": {
-    "@types/node": "^20.2.3"
-  }
+    "@types/node": "^20.2.3",
+    "@types/prompts": "^2.4.4",
+    "typescript": "^5.0.4",
+    "unbuild": "^1.2.1"
+  },
+  "types": "./dist/index.d.ts"
 }

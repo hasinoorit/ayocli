@@ -1,0 +1,19 @@
+import { defineBuildConfig } from "unbuild";
+// import fs from "fs/promises";
+export default defineBuildConfig({
+  clean: true,
+  declaration: true,
+  entries: ["./src/index"],
+  rollup: {
+    emitCJS: true,
+    inlineDependencies: true,
+  },
+  failOnWarn: true,
+  // hooks: {
+  //   "build:done": async () => {
+  //     await fs.copyFile("./package.json", "dist/package.json");
+  //     await fs.copyFile("./readme.md", "./dist/readme.md");
+  //     await fs.copyFile("./LICENCE", "./dist/LICENCE");
+  //   },
+  // },
+});
