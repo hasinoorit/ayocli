@@ -275,9 +275,12 @@ const reBuildIndexFile = async (): Promise<void> => {
   const generateNamedExports = composableList
     .map((item) => `export { ${item.name} } from "./${item.path}";\n`)
     .join('')
-  const directiveExports = directiveList.map(
-    (directive) => `export { ${directive} } from "./directives/${directive}";\n`
-  )
+  const directiveExports = directiveList
+    .map(
+      (directive) =>
+        `export { ${directive} } from "./directives/${directive}";\n`
+    )
+    .join('')
   const generateExports = `export { ${defaultImports
     .map((item) => item.name)
     .join(', ')} };\n`
