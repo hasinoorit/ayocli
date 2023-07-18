@@ -103,7 +103,7 @@ const createDirective = async (name: string): Promise<void> => {
   if (await isExist(directivePath)) {
     throw new Error('Composable alreardy exist')
   }
-  const composableContent = `export const ${name} = () => {}`
+  const composableContent = `export const ${name} = {}`
   await fs.writeFile(directivePath, composableContent)
 }
 
