@@ -272,6 +272,9 @@ const reBuildIndexFile = async (): Promise<void> => {
   const generateDefaultImports = defaultImports
     .map((item) => `import ${item.name} from "./${item.path}";\n`)
     .join('')
+  const generateComponentInstall = defaultImports
+    .map((item) => `    app.component('${item.name}', ${item.name})`)
+    .join('\n')
   const generateNamedExports = composableList
     .map((item) => `export { ${item.name} } from "./${item.path}";\n`)
     .join('')
@@ -284,10 +287,29 @@ const reBuildIndexFile = async (): Promise<void> => {
   const generateExports = `export { ${defaultImports
     .map((item) => item.name)
     .join(', ')} };\n`
+  const generatePlugin = `const AyoVue: Plugin = {
+  install(app) {
+${generateComponentInstall}
+  }
+}
+export default AyoVue
+  `
+  const declareComponent = `declare module '@vue/runtime-core' {
+  export interface GlobalComponents {
+${defaultImports
+  .map((item) => `      ${item.name}: typeof ${item.name}`)
+  .join(',\n')}
+  }
+}
+`
   const contents =
+    `import type { Plugin } from 'vue'
+` +
     generateDefaultImports +
     generateNamedExports +
     directiveExports +
-    generateExports
+    generateExports +
+    declareComponent +
+    generatePlugin
   await fs.writeFile('src/index.ts', contents)
 }
