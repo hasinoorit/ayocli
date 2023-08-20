@@ -119,6 +119,7 @@ const askType = async (): Promise<{ value: string }> => {
       },
       { title: chalk.green('Composable'), value: 'composable' },
       { title: chalk.green('Directive'), value: 'directive' },
+      { title: chalk.green('Rebuild Index'), value: 'rebuild' },
     ],
     initial: 0,
   })
@@ -158,6 +159,10 @@ export const vueCli = async (): Promise<void> => {
   ])
   const type = await askType()
   if (!type.value) {
+    return
+  }
+  if (type.value === 'rebuild') {
+    await reBuildIndexFile()
     return
   }
   const name = await askName(type.value)

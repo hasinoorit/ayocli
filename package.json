@@ -1,6 +1,6 @@
 {
   "name": "@hasinoor/ayocli",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "CLI tools for bootstarpping developemnt of ayoton's products.",
   "main": "dist/index.mjs",
   "type": "module",
