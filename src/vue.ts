@@ -292,13 +292,12 @@ const reBuildIndexFile = async (): Promise<void> => {
   const generateExports = `export { ${defaultImports
     .map((item) => item.name)
     .join(', ')} };\n`
-  const generatePlugin = `const AyoVue: Plugin = {
+  const generatePlugin = `export const AyoVue: Plugin = {
   install(app) {
 ${generateComponentInstall}
   }
 }
-export default AyoVue
-  `
+`
   const declareComponent = `declare module '@vue/runtime-core' {
   export interface GlobalComponents {
 ${defaultImports
