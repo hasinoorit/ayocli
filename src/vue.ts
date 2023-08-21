@@ -297,6 +297,8 @@ const reBuildIndexFile = async (): Promise<void> => {
 ${generateComponentInstall}
   }
 }
+
+export default AyoVue
 `
   const declareComponent = `declare module '@vue/runtime-core' {
   export interface GlobalComponents {
